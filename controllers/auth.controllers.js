@@ -2,6 +2,7 @@
 const usermodel=require('../models/users')
 const crypto=require("crypto")
 const jwt=require("jsonwebtoken")
+const passport=require("passport")
 const config=require('../config/config')
 const sessionModel = require('../models/session.model')
 const otpModel = require('../models/otp.model')
@@ -92,6 +93,69 @@ res.status(200).json({
 
 
 }
+
+exports.googleLogin=passport.authenticate("google",{scope:["profile","email"]}) 
+
+exports.googleCallBack = [
+    passport.authenticate("google", {
+        session: false,
+    }),
+
+    async (req, res) => {
+
+    console.log("Authenticated Google User:", req.user);
+    
+const refreshToken=jwt.sign({
+    userid : req.user._id
+    },
+    config.JWT_SECRET,
+    {
+        expiresIn:"7d"
+    }
+
+)
+
+const refreshTokenHash=crypto.createHash("sha256").update(refreshToken).digest("hex")
+
+const session=await sessionModel.create({
+    user: req.user._id,
+    refreshTokenHash,
+    IP:req.ip,
+    userAgent:req.headers["user-agent"]
+}
+)
+
+
+const accessToken=jwt.sign(
+    {
+        userid : req.user._id,
+        sessionId:session._id
+    },
+    config.JWT_SECRET,
+    {
+        expiresIn:"15m"
+    } 
+)
+
+
+res.cookie("refreshToken",refreshToken,
+    {
+        httponly:true,
+        secure:false,
+        sameSite:"strict",
+        maxAge:7*24*60*60*1000,
+    }
+)
+
+res.status(200).json({
+    message:"user login successfully through google",
+    user: {
+        username: req.user.username,
+        email: req.user.email,
+    },
+    accessToken
+})
+}]
 
 exports.register = async(req,res) => {
 const {username,email,password}=req.body;

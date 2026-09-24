@@ -18,7 +18,6 @@ transporter.verify((error,success)=>{
         console.log("error connecting to email server",error)
     }else{
         console.log("email server is ready for sending mails");
-        
     }
 })
 

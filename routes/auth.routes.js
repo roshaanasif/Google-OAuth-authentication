@@ -1,11 +1,14 @@
 const express = require("express");
 // const router = express.Router();
-
 const authRouter=express.Router();
 const authControllers=require('../controllers/auth.controllers')
 
 
 authRouter.post('/login',authControllers.login);
+
+authRouter.get('/google-login',authControllers.googleLogin);
+
+authRouter.get('/google/callback',authControllers.googleCallBack);
 
 authRouter.post('/register',authControllers.register);
 

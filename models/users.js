@@ -4,8 +4,8 @@ const mongoose =require('mongoose');
 const userSchema=new mongoose.Schema({
     username:{
         type:String,
-        required:[true,"username required"],
-        unique:[true,"username should be unique"]      
+        // required:[true,"username required"],
+        // unique:[true,"username should be unique"]      
     },
     email:{
         type:String,
@@ -14,7 +14,15 @@ const userSchema=new mongoose.Schema({
     },
     password:{
         type:String,
-        required:[true,"password required"],
+        // required:[true,"password required"],
+    },
+    googleId:{
+        type:String,
+        // required:[true,"password required"],
+    },
+    avatar:{
+        type:String,
+        // required:[true,"password required"],
     },
     verified:{
         type:Boolean,
