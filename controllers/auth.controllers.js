@@ -8,7 +8,9 @@ const sessionModel = require('../models/session.model')
 const otpModel = require('../models/otp.model')
 const sendEmail = require('../services/email.service')
 const {generateOtp,generateEmailHtml} = require('../utils/utils')
-
+const oauthclient = require('../utils/google')
+const axios = require('axios');
+const{google}=require('googleapis');
 
 
 exports.login = async(req,res) => {
@@ -94,19 +96,124 @@ res.status(200).json({
 
 }
 
-exports.googleLogin=passport.authenticate("google",{scope:["profile","email"]}) 
+// with passport.js 
 
-exports.googleCallBack = [
-    passport.authenticate("google", {
-        session: false,
-    }),
+// exports.googleLogin=passport.authenticate("google",{scope:["profile","email"]}) 
 
-    async (req, res) => {
+// exports.googleCallBack = [
+//     passport.authenticate("google", {
+//         session: false,
+//     }),
 
-    console.log("Authenticated Google User:", req.user);
+//     async (req, res) => {
+
+//     console.log("Authenticated Google User:", req.user);
     
+// const refreshToken=jwt.sign({
+//     userid : req.user._id
+//     },
+//     config.JWT_SECRET,
+//     {
+//         expiresIn:"7d"
+//     }
+
+// )
+
+// const refreshTokenHash=crypto.createHash("sha256").update(refreshToken).digest("hex")
+
+// const session=await sessionModel.create({
+//     user: req.user._id,
+//     refreshTokenHash,
+//     IP:req.ip,
+//     userAgent:req.headers["user-agent"]
+// }
+// )
+
+
+// const accessToken=jwt.sign(
+//     {
+//         userid : req.user._id,
+//         sessionId:session._id
+//     },
+//     config.JWT_SECRET,
+//     {
+//         expiresIn:"15m"
+//     } 
+// )
+
+
+// res.cookie("refreshToken",refreshToken,
+//     {
+//         httponly:true,
+//         secure:false,
+//         sameSite:"strict",
+//         maxAge:7*24*60*60*1000,
+//     }
+// )
+
+// res.status(200).json({
+//     message:"user login successfully through google",
+//     user: {
+//         username: req.user.username,
+//         email: req.user.email,
+//     },
+//     accessToken
+// })
+// }]
+
+
+// with googleapis
+exports.googleLogin = (req, res) => {
+  const authUrl = oauthclient.generateAuthUrl({
+    access_type: "offline",
+    scope: ["openid", "email", "profile"],
+  });
+
+  res.redirect(authUrl);
+};
+
+
+exports.googleCallBack=async(req,res)=>{
+
+    const { code } = req.query;
+
+    if (!code) {
+        return res.status(400).json({
+            message: "Google auth code is missing. Please complete the Google login flow first."
+        });
+    }
+    
+    console.log("code", code)
+    const googleResponse = await oauthclient.getToken(code);
+
+    oauthclient.setCredentials(googleResponse.tokens);
+
+    const oauth2 = google.oauth2({
+      auth: oauthclient,
+      version: "v2",
+    });
+
+    const { data } = await oauth2.userinfo.get();
+
+    console.log(data);
+
+  
+    const {name,email,picture,id}=data;
+
+    let user=await usermodel.findOne({googleId: id})
+    
+        if (!user){
+            user=await usermodel.create({
+                username:name,
+                email:email,
+                googleId:id,
+                avatar:picture
+            })
+            
+        }
+
 const refreshToken=jwt.sign({
-    userid : req.user._id
+    userid : user._id
     },
     config.JWT_SECRET,
     {
@@ -118,7 +225,7 @@ const refreshToken=jwt.sign({
 const refreshTokenHash=crypto.createHash("sha256").update(refreshToken).digest("hex")
 
 const session=await sessionModel.create({
-    user: req.user._id,
+    user:user._id,
     refreshTokenHash,
     IP:req.ip,
     userAgent:req.headers["user-agent"]
@@ -128,7 +235,7 @@ const session=await sessionModel.create({
 
 const accessToken=jwt.sign(
     {
-        userid : req.user._id,
+        userid : user._id,
         sessionId:session._id
     },
     config.JWT_SECRET,
@@ -143,19 +250,23 @@ res.cookie("refreshToken",refreshToken,
         httponly:true,
         secure:false,
         sameSite:"strict",
-        maxAge:7*24*60*60*1000,
+        maxAge:7*24*60*60*1000, 
     }
 )
 
 res.status(200).json({
     message:"user login successfully through google",
     user: {
-        username: req.user.username,
-        email: req.user.email,
+        username: name,
+        email: email,
     },
     accessToken
 })
-}]
+
+
+
+}
+
 
 exports.register = async(req,res) => {
 const {username,email,password}=req.body;

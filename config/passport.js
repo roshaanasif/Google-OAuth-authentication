@@ -7,7 +7,7 @@ const userModel=require('../models/users')
 passport.use(new GoogleStrategy({
     clientID:config.PASSPORT_GOOGLE_CLIENT_ID,
     clientSecret:config.PASSPORT_GOOGLE_CLIENT_SECRET,
-    callbackURL:"config.PASSPORT_GOOGLE_CALLBACK_URL"
+    callbackURL:config.PASSPORT_GOOGLE_CALLBACK_URL
 },async(accessToken,refreshToken,profile,callback)=>{
     try{
 
